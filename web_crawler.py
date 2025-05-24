@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""
-Advanced Web Crawler Implementation
-Author: Assistant
-Date: 2025
-
-This crawler implements a multi-threaded web crawler with:
-- URL queue management
-- Keyword extraction
-- Performance monitoring
-- Data persistence
-- Crawl statistics
-"""
 
 import requests
 import threading
@@ -33,7 +21,6 @@ import logging
 
 @dataclass
 class CrawlStats:
-    """Data class to track crawling statistics"""
     urls_crawled: int = 0
     urls_discovered: int = 0
     keywords_extracted: int = 0
@@ -41,18 +28,15 @@ class CrawlStats:
     errors: int = 0
     
 class WebArchive:
-    """Handles storage and retrieval of crawled data"""
     
     def __init__(self, db_path: str = "web_archive.db"):
         self.db_path = db_path
         self.init_database()
     
     def init_database(self):
-        """Initialize SQLite database with required tables"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Create pages table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +50,6 @@ class WebArchive:
             )
         ''')
         
-        # Create crawl_stats table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS crawl_stats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,7 +66,6 @@ class WebArchive:
     
     def store_page(self, url: str, title: str, content: str, keywords: List[str], 
                    status_code: int, content_type: str):
-        """Store crawled page data"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -99,7 +81,6 @@ class WebArchive:
         conn.close()
     
     def store_stats(self, stats: CrawlStats):
-        """Store crawling statistics"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -116,7 +97,6 @@ class WebArchive:
         conn.close()
 
 class KeywordExtractor:
-    """Extracts keywords from web page content"""
     
     def __init__(self):
         # Common stop words to filter out
@@ -130,24 +110,19 @@ class KeywordExtractor:
         }
     
     def extract_keywords(self, text: str, max_keywords: int = 50) -> List[str]:
-        """Extract keywords from text content"""
         if not text:
             return []
         
-        # Clean and tokenize text
         text = re.sub(r'[^\w\s]', ' ', text.lower())
         words = text.split()
         
-        # Filter out stop words and short words
         keywords = [word for word in words 
                    if len(word) > 2 and word not in self.stop_words]
         
-        # Count frequency and return most common
         keyword_counts = Counter(keywords)
         return [word for word, _ in keyword_counts.most_common(max_keywords)]
 
 class WebCrawler:
-    """Main web crawler class"""
     
     def __init__(self, max_urls: int = 1000, max_threads: int = 5, delay: float = 1.0):
         self.max_urls = max_urls
@@ -165,19 +140,16 @@ class WebCrawler:
         self.lock = threading.Lock()
         self.running = True
         
-        # Setup logging
         logging.basicConfig(level=logging.INFO, 
                           format='%(asctime)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(__name__)
         
-        # Session for connection pooling
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Educational-WebCrawler/1.0 (Educational Purpose)'
         })
     
     def is_valid_url(self, url: str) -> bool:
-        """Check if URL is valid and should be crawled"""
         try:
             parsed = urllib.parse.urlparse(url)
             return parsed.scheme in ['http', 'https'] and bool(parsed.netloc)
@@ -185,7 +157,6 @@ class WebCrawler:
             return False
     
     def normalize_url(self, url: str, base_url: str = None) -> str:
-        """Normalize URL and resolve relative URLs"""
         if base_url:
             url = urllib.parse.urljoin(base_url, url)
         
@@ -198,7 +169,6 @@ class WebCrawler:
         return normalized.rstrip('/')
     
     def extract_links(self, soup: BeautifulSoup, base_url: str) -> List[str]:
-        """Extract all links from a BeautifulSoup object"""
         links = []
         
         for link in soup.find_all('a', href=True):
@@ -214,7 +184,6 @@ class WebCrawler:
         return links
     
     def crawl_page(self, url: str) -> Optional[Dict]:
-        """Crawl a single page and extract information"""
         try:
             self.logger.info(f"Crawling: {url}")
             
@@ -226,19 +195,15 @@ class WebCrawler:
             
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Extract title
             title_tag = soup.find('title')
             title = title_tag.get_text().strip() if title_tag else ''
             
-            # Extract text content
             for script in soup(["script", "style"]):
                 script.decompose()
             text_content = soup.get_text()
             
-            # Extract keywords
             keywords = self.keyword_extractor.extract_keywords(text_content)
             
-            # Extract links
             links = self.extract_links(soup, url)
             
             return {
@@ -258,7 +223,6 @@ class WebCrawler:
             return None
     
     def worker_thread(self):
-        """Worker thread function for crawling"""
         while self.running:
             with self.lock:
                 if not self.url_queue or self.stats.urls_crawled >= self.max_urls:
@@ -269,14 +233,12 @@ class WebCrawler:
             page_data = self.crawl_page(url)
             
             if page_data:
-                # Store page data
                 self.archive.store_page(
                     page_data['url'], page_data['title'], page_data['content'],
                     page_data['keywords'], page_data['status_code'], 
                     page_data['content_type']
                 )
                 
-                # Add new URLs to queue
                 with self.lock:
                     for link in page_data['links']:
                         if (len(self.url_queue) < 10000 and  # Prevent queue overflow
@@ -290,39 +252,32 @@ class WebCrawler:
             time.sleep(self.delay)  # Respectful crawling delay
     
     def start_crawling(self, seed_urls: List[str]):
-        """Start the crawling process"""
         self.logger.info(f"Starting crawl with {len(seed_urls)} seed URLs")
         self.stats.start_time = time.time()
         
-        # Initialize queue with seed URLs
         for url in seed_urls:
             normalized = self.normalize_url(url)
             if self.is_valid_url(normalized):
                 self.url_queue.append(normalized)
                 self.discovered_urls.add(normalized)
         
-        # Start worker threads
         threads = []
         for i in range(self.max_threads):
             thread = threading.Thread(target=self.worker_thread)
             thread.start()
             threads.append(thread)
         
-        # Monitor progress
         self.monitor_progress()
         
-        # Wait for all threads to complete
         self.running = False
         for thread in threads:
             thread.join()
         
-        # Store final statistics
         self.archive.store_stats(self.stats)
         
         self.logger.info(f"Crawling completed. URLs crawled: {self.stats.urls_crawled}")
     
     def monitor_progress(self):
-        """Monitor and display crawling progress"""
         start_time = time.time()
         
         while self.running and self.stats.urls_crawled < self.max_urls:
@@ -343,17 +298,13 @@ class WebCrawler:
                 break
     
     def generate_statistics_report(self):
-        """Generate crawling statistics and plots"""
         conn = sqlite3.connect(self.archive.db_path)
         
-        # Get crawl statistics
         stats_df = pd.read_sql_query("SELECT * FROM crawl_stats ORDER BY timestamp", conn)
         pages_df = pd.read_sql_query("SELECT * FROM pages", conn)
         
-        # Create visualizations
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 10))
         
-        # Plot 1: URLs Crawled Over Time
         if not stats_df.empty:
             ax1.plot(range(len(stats_df)), stats_df['urls_crawled'], 'b-', linewidth=2)
             ax1.set_title('URLs Crawled Over Time')
@@ -361,7 +312,6 @@ class WebCrawler:
             ax1.set_ylabel('Cumulative URLs Crawled')
             ax1.grid(True)
         
-        # Plot 2: Crawl Speed
         if not stats_df.empty:
             ax2.plot(range(len(stats_df)), stats_df['crawl_speed'], 'r-', linewidth=2)
             ax2.set_title('Crawl Speed (Pages/Minute)')
@@ -369,7 +319,6 @@ class WebCrawler:
             ax2.set_ylabel('Pages per Minute')
             ax2.grid(True)
         
-        # Plot 3: Keywords Extracted
         if not stats_df.empty:
             ax3.plot(range(len(stats_df)), stats_df['keywords_extracted'], 'g-', linewidth=2)
             ax3.set_title('Keywords Extracted Over Time')
@@ -377,7 +326,6 @@ class WebCrawler:
             ax3.set_ylabel('Cumulative Keywords')
             ax3.grid(True)
         
-        # Plot 4: URL Discovery Ratio
         if not pages_df.empty and not stats_df.empty:
             ratios = []
             for _, row in stats_df.iterrows():
@@ -402,7 +350,6 @@ class WebCrawler:
         return stats_df, pages_df
 
 def main():
-    """Main function to run the web crawler"""
     parser = argparse.ArgumentParser(description='Advanced Web Crawler')
     parser.add_argument('--seed-urls', nargs='+', 
                        default=['https://cc.gatech.edu'],
@@ -416,7 +363,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Create crawler instance
     crawler = WebCrawler(
         max_urls=args.max_urls,
         max_threads=args.threads,
@@ -424,14 +370,11 @@ def main():
     )
     
     try:
-        # Start crawling
         crawler.start_crawling(args.seed_urls)
         
-        # Generate statistics
         print("\nGenerating statistics report...")
         stats_df, pages_df = crawler.generate_statistics_report()
         
-        # Print summary
         print(f"\n=== CRAWL SUMMARY ===")
         print(f"Total URLs crawled: {crawler.stats.urls_crawled}")
         print(f"Total URLs discovered: {crawler.stats.urls_discovered}")
@@ -442,7 +385,6 @@ def main():
         print(f"Total crawl time: {elapsed_time:.2f} seconds")
         print(f"Average crawl speed: {crawler.stats.urls_crawled / (elapsed_time / 60):.2f} pages/minute")
         
-        # Predictions for large-scale crawling
         current_speed = crawler.stats.urls_crawled / (elapsed_time / 60)  # pages/minute
         if current_speed > 0:
             time_10m = (10_000_000 / current_speed) / (60 * 24)  # days
