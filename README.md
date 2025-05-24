@@ -22,6 +22,7 @@ Create a requirements.txt file with the following contents:
 
 ```bash
 git clone https://github.com/vedikagarwal/python-web-crawler.git
+cd python-web-crawler
 ```
 
 ### Run the workflow
