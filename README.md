@@ -5,16 +5,16 @@ Multi-threaded Python web crawler with keyword extraction, SQLite storage, and p
 
 ### Python Dependencies
 Create a requirements.txt file with the following contents:
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-matplotlib>=3.7.0
-pandas>=2.0.0
-lxml>=4.9.0
+- requests>=2.31.0
+- beautifulsoup4>=4.12.0
+- matplotlib>=3.7.0
+- pandas>=2.0.0
+- lxml>=4.9.0
 
 ### System Requirements
-Python 3.8 or higher
-Internet connection
-At least 1GB free disk space for crawled data
+- Python 3.8 or higher
+- Internet connection
+- At least 1GB free disk space for crawled data
 
 ## Quick Start
 
